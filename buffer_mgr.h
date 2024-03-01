@@ -33,6 +33,16 @@ typedef struct BM_PageHandle {
 	char *data;
 } BM_PageHandle;
 
+//Page Frame Reference to store value
+typedef struct Frame{
+	int dirtyCount;
+	int fixCount;
+	int hit;
+	BM_PageHandle bm_PageHandle;
+	SM_PageHandle smp;
+} Frame;
+
+
 // convenience macros
 #define MAKE_POOL()					\
 		((BM_BufferPool *) malloc (sizeof(BM_BufferPool)))
