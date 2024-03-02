@@ -32,6 +32,7 @@ typedef int RC;
 
 #define RC_MEM_ALLOC_FAILED 400
 #define RC_ALLOCATION_FAILED 401
+#define RC_ERROR; 402
 
 /* holder for error messages */
 extern char *RC_message;
