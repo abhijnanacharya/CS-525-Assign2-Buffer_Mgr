@@ -52,3 +52,76 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
   // Return the initialized buffer pool status
   return returnCode;
 }
+//Tanushree
+
+typedef struct frame{
+    int cP;
+    bool isDirty;
+    int fC;
+    bool rF;
+    char *data;
+    struct frame *next;
+}frame;
+
+typedef struct buffer{
+    int write;
+    frame *head;
+}buffer;
+
+// Buffer Manager Interface Access Pages
+RC markDirty (BM_BufferPool *const bm, BM_PageHandle *const page){
+    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
+    return RC_ERROR;
+    buffer *b = bm->mgmtData;
+    frame *f = b->head;
+    while (f->cP!=page->pageNum){
+        f=f->next;
+        if (f==b->head)
+            return RC_READ_NON_EXISTING_PAGE; // Page not found
+    }
+    
+    f->isDirty = true;
+    return RC_OK;
+}
+
+RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
+    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
+    return RC_ERROR;
+    buffer *b = bm->mgmtData;
+    frame *f = b->head;
+    while (f->cP!=page->pageNum){
+        f=f->next;
+        if (f==b->head)
+            return RC_READ_NON_EXISTING_PAGE;
+    }
+    if (f->fC > 0){
+        f->fC--;
+        if (f->fC == 0)
+            f->rF = false;
+    }
+    else
+        return RC_READ_NON_EXISTING_PAGE;
+
+    return RC_OK;
+}
+
+RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page){
+    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
+    return RC_ERROR;
+    buffer *b = bm->mgmtData;
+    SM_FileHandle fHandle;
+    RC stat;
+    
+    stat = openPageFile(bm->pageFile, &fHandle);
+    if (stat!=RC_OK) return RC_FILE_NOT_FOUND;
+    
+    stat = writeBlock(page->pageNum, &fHandle, page->data);
+    if (stat!=RC_OK){
+        closePageFile(&fHandle);
+        return RC_FILE_NOT_FOUND;
+    }
+    
+    b->write++;
+    closePageFile(&fHandle);
+    return RC_OK;
+}
