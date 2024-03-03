@@ -41,8 +41,9 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
     frame[currVal].dirtyCount = 0;   // Initialize dirty count to 0
     frame[currVal].fixCount = 0;     // Initialize fix count to 0
     frame[currVal].hit = 0;          // Initialize hit count to 0
-    frame[currVal].currentPage = NO_PAGE; // Explicitly setting currentPage to NO_PAGE
+    frame[currVal].currentPage = NO_PAGE; // setting currentPage to NO_PAGE
     frame[currVal].nextFrame = NULL; // Initialize next frame pointer to NULL
+    frame[currVal].isDirty = false; // setting isDirty to false
     // Move to the next frame
     currVal++;
   }
@@ -65,14 +66,14 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
     if (b->head == NULL)
         return RC_READ_NON_EXISTING_PAGE; // page not found
 
-    Frame *frame = b->head;
+    Frame *f = b->head;
     do {
-        if (frame->currentPage == page->pageNum) {
-            frame->isDirty = true; // Mark the frame as dirty since the page has been modified
+        if (f->currentPage == page->pageNum) {
+            f->isDirty = true; // Mark the frame as dirty since the page has been modified
             return RC_OK; 
         }
-        frame = frame->nextFrame;
-    } while (frame != b->head);
+        f = f->nextFrame;
+    } while (f != b->head);
 
     return RC_READ_NON_EXISTING_PAGE; // specified page was not found
 }
@@ -82,16 +83,16 @@ RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
     if (bm == NULL || bm->pageFile == NULL || page == NULL) 
     return RC_ERROR;
     buffer *b = (buffer*)bm->mgmtData;
-    Frame *frame = b->head;
-    while (frame->currentPage!=page->pageNum){
-        frame=frame->nextFrame;
-        if (frame==b->head)
+    Frame *f = b->head;
+    while (f->currentPage!=page->pageNum){
+        f=f->nextFrame;
+        if (f==b->head)
             return RC_READ_NON_EXISTING_PAGE;
     }
-    if (frame->fixCount > 0){
-        frame->fixCount--;
-        if (frame->fixCount == 0)
-            frame->referenceBit = false;
+    if (f->fixCount > 0){
+        f->fixCount--;
+        if (f->fixCount == 0)
+            f->referenceBit = false;
     }
     else
         return RC_READ_NON_EXISTING_PAGE;
