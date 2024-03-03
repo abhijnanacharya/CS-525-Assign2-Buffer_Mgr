@@ -80,6 +80,7 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
 
 
 RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
+    RC returnCode=RC_OK;
     if (bm == NULL || bm->pageFile == NULL || page == NULL) 
     return RC_ERROR;
     buffer *b = (buffer*)bm->mgmtData;
@@ -97,7 +98,7 @@ RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
     else
         return RC_READ_NON_EXISTING_PAGE;
 
-    return RC_OK;
+    return returnCode;
 }
 
 RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page){
