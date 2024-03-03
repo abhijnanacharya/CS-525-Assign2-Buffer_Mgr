@@ -41,7 +41,8 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
     frame[currVal].dirtyCount = 0;   // Initialize dirty count to 0
     frame[currVal].fixCount = 0;     // Initialize fix count to 0
     frame[currVal].hit = 0;          // Initialize hit count to 0
-
+    frame[currVal].currentPage = NO_PAGE; // Explicitly setting currentPage to NO_PAGE
+    frame[currVal].nextFrame = NULL; // Initialize next frame pointer to NULL
     // Move to the next frame
     currVal++;
   }
