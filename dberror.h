@@ -16,6 +16,7 @@ typedef int RC;
 #define RC_READ_NON_EXISTING_PAGE 4
 #define RC_BUFFER_NOT_INIT 5
 #define RC_CLOSE_FILE_FAILED 6
+#define RC_PAGES_IN_BUFFER 7
 
 
 #define RC_SEEK_ERROR 199
