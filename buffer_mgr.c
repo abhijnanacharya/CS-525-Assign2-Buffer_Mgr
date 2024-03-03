@@ -55,6 +55,82 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
   return returnCode;
 }
 
+extern RC shutdownBufferPool(BM_BufferPool *const bm)
+
+/*a function named shutdownBufferPool that takes a BM_BufferPool pointer (bm)
+ as its argument and returns an RC*/
+{
+    Frame *pageFrame = (Frame *)bm->mgmtData;/*declaring a pointer to a Frame named pageFrame and assigns it the value of bm->mgmtData*/
+
+    //calling a function named forceFlushPool passing the bm pointer as an argument.
+    forceFlushPool(bm);
+    int i = 0;
+    switch (i)
+    {
+        case 0:
+            while (i < maxBufferSize)
+            {
+
+                /*below condition checks if the fix count of the current page frame is not equal to zero.
+                 If any page frame has a non-zero fix count, it means that some client is currently using that page,
+                 so the function returns RC_PAGES_IN_BUFFER.*/
+
+                if (pageFrame[i].fixCount != 0)
+                {
+                    return RC_PAGES_IN_BUFFER;
+                }
+                i++;
+            }
+            break;
+    }
+    free(pageFrame);
+    bm->mgmtData = NULL;/*t sets the mgmtData field of the buffer pool structure pointed to by bm to NULL.
+                        This indicates that the buffer pool is now empty.*/
+    return RC_OK;
+}
+
+
+
+/*Function flushframe is use  to flush a single frame. and it will Within the framework of a buffer pool
+ *  management system, the flushFrame function is intended to write the contents of a single 
+ * frame to disk. Using openPageFile, it first opens the page file linked to the buffer pool. 
+ * The data from the given frame (pageFrame) is then written to the matching page number (pageNum)
+ *  in the file using writeBlock. It designates the frame as clean by changing its dirtyCount field to 0,
+ *  indicating that the data has been successfully written to disk. It probably also modifies a counter 
+ * (numberOfPagesWritten) to keep track of how many pages have been written to disk. This feature makes
+ *  sure that changes made to buffer pool pages are saved to disk, preserving consistency between
+ *  in-memory data and persistant memory*/
+
+void flushFrame(BM_BufferPool *const bm, Frame *pageFrame, int pageNum) {
+    SM_FileHandle fh;
+    openPageFile(bm->pageFile, &fh);
+    writeBlock(pageNum, &fh, pageFrame->bm_PageHandle.data);
+    pageFrame->dirtyCount = 0;
+    numberOfPagesWritten++;
+}
+
+/*Revised forceFlushPool function using flushFrame and it is use for 
+The forceFlushPool function iterates over each frame in the buffer pool. 
+For each frame, if it's not currently in use and has been modified, 
+it calls flushFrame to write its data to disk. Finally, the function returns RC_OK,
+ensuring all dirty pages are successfully flushed to maintain data consistency.*/
+
+extern RC forceFlushPool(BM_BufferPool *const bm) {
+    Frame *pageFrame = (Frame *)bm->mgmtData;
+    int i = 0;
+    switch (i) {
+        case 0:
+            while (i < maxBufferSize) {
+                if (pageFrame[i].fixCount == 0 && pageFrame[i].dirtyCount == 1) {
+                    flushFrame(bm, &pageFrame[i], pageFrame[i].bm_PageHandle.pageNum);
+                }
+                i++;
+            }
+            break;
+    }
+    return RC_OK;
+}
+
 
 // Buffer Manager Interface Access Pages
 RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
