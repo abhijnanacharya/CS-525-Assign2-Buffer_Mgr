@@ -64,14 +64,14 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
     if (b->head == NULL)
         return RC_READ_NON_EXISTING_PAGE; // page not found
 
-    Frame *f = b->head;
+    Frame *frame = b->head;
     do {
-        if (f->currentPage == page->pageNum) {
-            f->isDirty = true; // Mark the frame as dirty since the page has been modified
+        if (frame->currentPage == page->pageNum) {
+            frame->isDirty = true; // Mark the frame as dirty since the page has been modified
             return RC_OK; 
         }
-        f = f->nextFrame;
-    } while (f != b->head);
+        frame = frame->nextFrame;
+    } while (frame != b->head);
 
     return RC_READ_NON_EXISTING_PAGE; // specified page was not found
 }
@@ -81,16 +81,16 @@ RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
     if (bm == NULL || bm->pageFile == NULL || page == NULL) 
     return RC_ERROR;
     buffer *b = (buffer*)bm->mgmtData;
-    Frame *f = b->head;
-    while (f->currentPage!=page->pageNum){
-        f=f->nextFrame;
-        if (f==b->head)
+    Frame *frame = b->head;
+    while (frame->currentPage!=page->pageNum){
+        frame=frame->nextFrame;
+        if (frame==b->head)
             return RC_READ_NON_EXISTING_PAGE;
     }
-    if (f->fixCount > 0){
-        f->fixCount--;
-        if (f->fixCount == 0)
-            f->referenceBit = false;
+    if (frame->fixCount > 0){
+        frame->fixCount--;
+        if (frame->fixCount == 0)
+            frame->referenceBit = false;
     }
     else
         return RC_READ_NON_EXISTING_PAGE;
