@@ -54,7 +54,7 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 }
 
 
-// Buffer Manager IntereferenceBitace Access Pages
+// Buffer Manager Interface Access Pages
 RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
   // Checking if buffer manager, page file, or page handle pointers are NULL.
     if (bm == NULL || bm->pageFile == NULL || page == NULL) 
