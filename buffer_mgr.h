@@ -41,10 +41,10 @@ typedef struct Frame{
 	BM_PageHandle bm_PageHandle;
 	SM_PageHandle smp;
 	int currentPage;
-    bool isDirty;
-    bool referenceBit;
-    char *data;
-    struct Frame *nextFrame;
+	bool isDirty;
+	bool referenceBit;
+	char *data;
+	struct Frame *nextFrame;
 } Frame;
 
 typedef struct buffer{
