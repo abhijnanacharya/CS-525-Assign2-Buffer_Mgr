@@ -40,7 +40,17 @@ typedef struct Frame{
 	int hit;
 	BM_PageHandle bm_PageHandle;
 	SM_PageHandle smp;
+	int currentPage;
+    bool isDirty;
+    bool referenceBit;
+    char *data;
+    struct Frame *nextFrame;
 } Frame;
+
+typedef struct buffer{
+    int writeCount;
+    Frame *head;
+}buffer;
 
 
 // convenience macros
