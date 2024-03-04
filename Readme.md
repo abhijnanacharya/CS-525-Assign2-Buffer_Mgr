@@ -350,10 +350,13 @@ int getNumReadIO (BM_BufferPool *const bm);
 
 **Return:**
 
-- 
+- `((Buffer *)bm->mgmtData)->readCount`
 
 **Details:**
-1. 
+
+1. Access the management data (mgmtData) of the given buffer pool (bm), assuming it is of type Buffer.
+2. Retrieve the readCount attribute from the Buffer structure, which represents the count of read I/O operations.
+3. Return the obtained readCount value as the result of the function.
 
 
 
@@ -378,16 +381,18 @@ int getNumWriteIO (BM_BufferPool *const bm);
 
 **Return:**
 
-- 
+- `((Buffer *)bm->mgmtData)->writeCount`
 
 **Details:**
-1. 
-
+1. Access the management data (mgmtData) of the given buffer pool (bm), assuming it is of type Buffer.
+2. Retrieve the writeCount attribute from the Buffer structure, which represents the count of write I/O operations.
+3. Return the obtained writeCount value as the result of the function.
 
 ---
 
 ---
-#replacement_mgr_strat.c
+# replacement_mgr_strat.c
+
 **Replacement Functions**
 
 **function FIFO**
