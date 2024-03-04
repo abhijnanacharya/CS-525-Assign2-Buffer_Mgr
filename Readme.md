@@ -43,6 +43,11 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 3. Initializes each frame.
 4. Sets management data and returns status.
 
+
+---
+
+---
+
 **function shutDownBufferPool**
 This file describes the 'shutDownBufferPool' function for shutting down a buffer pool.
 
@@ -70,17 +75,20 @@ extern RC shutdownBufferPool(BM_BufferPool *const bm);
 4. Sets the mgmtData field of the buffer pool structure pointed to by bm to NULL. This indicates that the buffer pool is now empty.
 5. Returns status.
 
+---
+
+---
 
 **function flushFrame**
-This file describes the 'shutDownBufferPool' function for shutting down a buffer pool.
+This file describes the 'flushFrame' function which flushes a frame.
 
 **Function Signature:**
 
 ```c
-(BM_BufferPool *const bm, Frame *pageFrame, int pageNum);
+void flushFrame(BM_BufferPool *const bm, Frame *pageFrame, int pageNum);
 ```
 
-**Purpose:** Causes all dirty pages (with fix count 0) from the buffer pool to be written to disk. 
+**Purpose:** Flushes one page frame to the disk.
 
 **Parameters:**
 
@@ -99,5 +107,132 @@ This file describes the 'shutDownBufferPool' function for shutting down a buffer
 3. The frame is designated as clean by changing the dirtyCount field to 0.
 4. Modifies a counter to keep track of how many pages have been written to disk.
 
+
+
+---
+
+---
+
+**function forceFlushPool**
+This file describes the 'flushFrame' function which flushes each frame in the buffer pool using the flushFrame function.
+
+**Function Signature:**
+
+```c
+extern RC forceFlushPool(BM_BufferPool *const bm);
+```
+
+**Purpose:** Causes all dirty pages (with fix count 0) from the buffer pool to be written to disk.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- `RC_OK`: Initialization successful.
+
+**Details:**
+
+1. Iterates over each frame in the buffer pool.
+2. For each frame, if it's not currently in use and has been modified, it calls flushFrame to write its data to disk.
+3. The function returns RC_OK, ensuring all dirty pages are successfully flushed to maintain data consistency.
+
+
+
+---
+
+---
+
+**function markDirty**
+This file describes the 'markDirty' function which marks a page as dirty.
+
+**Function Signature:**
+
+```c
+RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page);
+```
+
+**Purpose:** This function marks a given page as dirty.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Given page to check if dirty or not.
+
+**Return:**
+
+- `RC_OK`: Initialization successful.
+- `RC_READ_NON_EXISTING_PAGE`: Tried to read a non existent page error.
+
+**Details:**
+
+1. Checks if buffer manager, page file, or page handle pointers are NULL.
+2. Marks the frame as dirty since the page has been modified
+3. Returns either true or page not found error
+
+
+
+---
+
+---
+
+**function unpinPage **
+This file describes the 'unpinPage ' function which unpins a page.
+
+**Function Signature:**
+
+```c
+RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page);
+```
+
+**Purpose:** This function unpins a given page.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Given page to unpin.
+
+**Return:**
+
+- `RC_OK`: Initialization successful.
+- `RC_READ_NON_EXISTING_PAGE`: Tried to read a non existent page error.
+
+
+
+
+---
+
+---
+
+**function forcePage  **
+This file describes the 'forcePage ' function which writes the current content of the page back to the page file on disk.
+
+**Function Signature:**
+
+```c
+RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page);
+```
+
+**Purpose:** This function writes the current content of the page back to the page file on disk.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Given page to write back to disk.
+
+**Return:**
+
+- `RC_OK`: Operation successful.
+- `RC_FILE_NOT_FOUND`: Tried to read a non existent page file error.
+
+**Details:**
+1. Attempts to open the page file.
+2. Writes the page data to disk.
+3. Closes the file handle after successful write.
 
 
