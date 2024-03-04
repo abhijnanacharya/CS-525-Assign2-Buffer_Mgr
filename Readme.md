@@ -49,6 +49,7 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 ---
 
 **function shutDownBufferPool**
+
 This file describes the 'shutDownBufferPool' function for shutting down a buffer pool.
 
 **Function Signature:**
@@ -80,6 +81,7 @@ extern RC shutdownBufferPool(BM_BufferPool *const bm);
 ---
 
 **function flushFrame**
+
 This file describes the 'flushFrame' function which flushes a frame.
 
 **Function Signature:**
@@ -114,6 +116,7 @@ void flushFrame(BM_BufferPool *const bm, Frame *pageFrame, int pageNum);
 ---
 
 **function forceFlushPool**
+
 This file describes the 'flushFrame' function which flushes each frame in the buffer pool using the flushFrame function.
 
 **Function Signature:**
@@ -146,6 +149,7 @@ extern RC forceFlushPool(BM_BufferPool *const bm);
 ---
 
 **function markDirty**
+
 This file describes the 'markDirty' function which marks a page as dirty.
 
 **Function Signature:**
@@ -179,7 +183,8 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page);
 
 ---
 
-**function unpinPage **
+**function unpinPage**
+
 This file describes the 'unpinPage ' function which unpins a page.
 
 **Function Signature:**
@@ -208,7 +213,8 @@ RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page);
 
 ---
 
-**function forcePage  **
+**function forcePage**
+
 This file describes the 'forcePage ' function which writes the current content of the page back to the page file on disk.
 
 **Function Signature:**
