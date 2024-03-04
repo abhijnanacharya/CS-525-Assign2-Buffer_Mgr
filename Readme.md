@@ -546,6 +546,7 @@ RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
 ---
 
 **Additional Functions**
+
 **function checkIfPinned**
 
 This file describes the 'checkIfPinned' function which defines a function checkIfPinned that searches for a frame in a circular buffer pool (BM_BufferPool) with a given page number (pageNum). If the frame with the specified page number is found, its fix count is incremented, and the frame is returned; otherwise, it returns NULL indicating that the requested page number is not present in any frame.
