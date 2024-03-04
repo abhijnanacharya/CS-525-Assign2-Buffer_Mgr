@@ -44,7 +44,6 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 4. Sets management data and returns status.
 
 
----
 
 ---
 
@@ -76,7 +75,6 @@ extern RC shutdownBufferPool(BM_BufferPool *const bm);
 4. Sets the mgmtData field of the buffer pool structure pointed to by bm to NULL. This indicates that the buffer pool is now empty.
 5. Returns status.
 
----
 
 ---
 
@@ -113,8 +111,6 @@ void flushFrame(BM_BufferPool *const bm, Frame *pageFrame, int pageNum);
 
 ---
 
----
-
 **function forceFlushPool**
 
 This file describes the 'flushFrame' function which flushes each frame in the buffer pool using the flushFrame function.
@@ -142,9 +138,6 @@ extern RC forceFlushPool(BM_BufferPool *const bm);
 2. For each frame, if it's not currently in use and has been modified, it calls flushFrame to write its data to disk.
 3. The function returns RC_OK, ensuring all dirty pages are successfully flushed to maintain data consistency.
 
-
-
----
 
 ---
 
@@ -181,8 +174,6 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page);
 
 ---
 
----
-
 **function unpinPage**
 
 This file describes the 'unpinPage ' function which unpins a page.
@@ -207,9 +198,6 @@ RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page);
 - `RC_READ_NON_EXISTING_PAGE`: Tried to read a non existent page error.
 
 
-
-
----
 
 ---
 
@@ -243,7 +231,6 @@ RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page);
 
 
 
----
 
 ---
 
@@ -276,7 +263,6 @@ extern RC PageNumber *getFrameContents (BM_BufferPool *const bm);
 5. Returns array with page numbers.
 
    
----
 
 ---
 
@@ -311,8 +297,6 @@ bool *getDirtyFlags (BM_BufferPool *const bm);
 
 ---
 
----
-
 **function getFixCounts**
 
 This file describes the 'getFixCounts' function which gets the fix count.
@@ -343,7 +327,6 @@ int *getFixCounts (BM_BufferPool *const bm);
 
 
 
----
 
 ---
 
@@ -372,7 +355,6 @@ int getNumReadIO (BM_BufferPool *const bm);
 1. 
 
 
----
 
 ---
 
