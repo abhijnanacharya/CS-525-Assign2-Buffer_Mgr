@@ -242,3 +242,165 @@ RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page);
 3. Closes the file handle after successful write.
 
 
+
+---
+
+---
+
+**function getFrameContents**
+
+This file describes the 'getFrameContents' function which returns an array with the number of the page frames.
+
+**Function Signature:**
+
+```c
+extern RC PageNumber *getFrameContents (BM_BufferPool *const bm);
+```
+
+**Purpose:** This function returns an array of PageNumbers (of size numPages) where the ith element is the number of the page stored in the ith page frame. An empty page frame is represented using the constant NO PAGE.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- `pageNumArr`: Returns the page number array.
+
+**Details:**
+1. Fetches frames from mgmtData.
+2. Sets page count.
+3. Makes an array of size numPages to save the page numbers to.
+4. Sets each value in page num array to the current page number.
+5. Returns array with page numbers.
+
+   
+---
+
+---
+
+**function getDirtyFlags**
+
+This file describes the 'getDirtyFlags' function which gets the dirty flags.
+
+**Function Signature:**
+
+```c
+bool *getDirtyFlags (BM_BufferPool *const bm);
+```
+
+**Purpose:** This function returns an array of bools (of size numPages) where the ith element is TRUE if the page stored in the ith page frame is dirty. Empty page frames are considered as clean.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- `dirtyPagesArr`: Returns the dirty pages array.
+
+**Details:**
+1. Fetches frames from mgmtData.
+2. Sets page count.
+3. Makes an empty boolean array to represent whether each page frame is dirty or not.
+4. Sets each frame to dirty or not dirty.
+5. Returns array with dirty pages.
+
+
+---
+
+---
+
+**function getFixCounts**
+
+This file describes the 'getFixCounts' function which gets the fix count.
+
+**Function Signature:**
+
+```c
+int *getFixCounts (BM_BufferPool *const bm);
+```
+
+**Purpose:** This function returns an array of ints (of size numPages) where the ith element is the fix count of the page stored in the ith page frame. Return 0 for empty page frames.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- `fixCount`: Returns the fix count array.
+
+**Details:**
+1. Fetches frames from mgmtData.
+2. Sets page count.
+3. Makes an empty int array to store the fix counts for each page frame.
+4. Sets fix count of each frame.
+5. Returns array with fix counts.
+
+
+
+---
+
+---
+
+**function getNumReadIO**
+
+This file describes the 'getNumReadIO' function which returns the number of pages that has been read from disk.
+
+**Function Signature:**
+
+```c
+int getNumReadIO (BM_BufferPool *const bm);
+```
+
+**Purpose:** This function returns the number of pages that have been read from disk since a buffer pool has been initialized. 
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- 
+
+**Details:**
+1. 
+
+
+---
+
+---
+
+**function getNumWriteIO**
+
+This file describes the 'getNumReadIO' function returns the number of pages written to the page file.
+
+**Function Signature:**
+
+```c
+int getNumWriteIO (BM_BufferPool *const bm);
+```
+
+**Purpose:** This function returns the number of pages written to the page file since the buffer pool has been initialized.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+
+**Return:**
+
+- 
+
+**Details:**
+1. 
+
+
+
+
+
