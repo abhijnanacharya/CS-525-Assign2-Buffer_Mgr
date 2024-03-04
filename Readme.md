@@ -511,35 +511,7 @@ RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
 
 **function LRUK**
 
-This file describes the 'LRUK' function implements the LRU-K page replacement strategy within a buffer pool.
-**Function Signature:**
-
-```c
-RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
-               const PageNumber pageNum)
-```
-
-**Purpose:** The purpose of this code is to implement the LRU-K page replacement strategy in the context of a buffer pool. It prioritizes the pinning of a specified page by updating its position in the LRU-K order if it is already pinned. If the page is not currently in the buffer pool, it falls back to using the First-In-First-Out (FIFO) strategy for pinning the page. 
-
-
-**Parameters:**
-
-- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
-- `page`: Page that is given
-- `pageNum`: Current page number we are working on.
-
-**Return:**
-
-- `RC_OK`: Returns with successful operation of code
-
-**Details:**
-1. Page is already pinned, update its position in LRU-K
-2. Move the accessed page to the top of the LRU-K stack
-3. Adjust pointers to detach the page from its current position
-4. Update pointers to add the page to the top
-5. Assign page number and data
-6. Page not pinned, use FIFO pinning
-7. Return successful return code
+LRU-K was not implemented as it is extra credit and as such optional.
 
 ---
 
