@@ -1,200 +1,247 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-
 #include "buffer_mgr.h"
-#include "replacement_mgr_strat.h"
 #include "storage_mgr.h"
-
-int maxBufferSize = 0;
-int numberOfPagesRead = 0;
-int numberOfPagesWritten = 0;
-int hit = 0;
-int clockPointer = 0;
+#include <string.h>
+#include <stdlib.h>
+#include "replacement_mgr_strat.h"
+#include "buffer_mgr_helper.h"
 
 RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
                   const int numPages, ReplacementStrategy strategy,
                   void *stratData)
 {
-  // Initialize return code to indicate success by default
-  RC returnCode = RC_OK;
-
-  // Check if buffer pool pointer is null
-  if (!bm) {
-    // Initialize buffer pool properties
-    bm->numPages = numPages;         // Set number of pages
-    bm->strategy = strategy;         // Set replacement strategy
-    bm->pageFile = (char *) pageFileName;  // Set page file name
-    maxBufferSize = numPages;        // Set maximum buffer size
-  }
-
-  // Allocate dynamic memory for frames stored as an array
-  Frame *frame = malloc(numPages * sizeof(Frame));
-
-  // Initialize each frame in the buffer pool
-  int currVal = 0;
-  while (currVal < maxBufferSize) {
-    // Initialize frame properties
-    frame[currVal].bm_PageHandle.data = NULL; // Set data pointer to null
-    frame[currVal].bm_PageHandle.pageNum = -1; // Set page number to -1 (invalid)
-    frame[currVal].dirtyCount = 0;   // Initialize dirty count to 0
-    frame[currVal].fixCount = 0;     // Initialize fix count to 0
-    frame[currVal].hit = 0;          // Initialize hit count to 0
-    frame[currVal].currentPage = NO_PAGE; // setting currentPage to NO_PAGE
-    frame[currVal].nextFrame = NULL; // Initialize next frame pointer to NULL
-    frame[currVal].isDirty = false; // setting isDirty to false
-    // Move to the next frame
-    currVal++;
-  }
-
-  // Set buffer pool management data to point to the allocated frames
-  bm->mgmtData = frame;
-
-  // Return the initialized buffer pool status
-  return returnCode;
+    return initBufferPoolHelper(bm, pageFileName, numPages, strategy, stratData);
 }
 
-extern RC shutdownBufferPool(BM_BufferPool *const bm)
-
-/*a function named shutdownBufferPool that takes a BM_BufferPool pointer (bm)
- as its argument and returns an RC*/
+RC shutdownBufferPool(BM_BufferPool *const bm)
 {
-    Frame *pageFrame = (Frame *)bm->mgmtData;/*declaring a pointer to a Frame named pageFrame and assigns it the value of bm->mgmtData*/
+    return shutdownBufferPoolHelper(bm);
+}
 
-    //calling a function named forceFlushPool passing the bm pointer as an argument.
-    forceFlushPool(bm);
-    int i = 0;
-    switch (i)
+RC forceFlushPool(BM_BufferPool *const bm)
+{
+    return forceFlushPoolHelper(bm);
+}
+
+RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page)
+{
+    // Buffer *bufferPtr = bm->mgmtData;
+    // Frame *framePtr = bufferPtr->head;
+    // Check if bm pointer is not NULL
+    if (bm == NULL)
     {
-        case 0:
-            while (i < maxBufferSize)
-            {
-
-                /*below condition checks if the fix count of the current page frame is not equal to zero.
-                 If any page frame has a non-zero fix count, it means that some client is currently using that page,
-                 so the function returns RC_PAGES_IN_BUFFER.*/
-
-                if (pageFrame[i].fixCount != 0)
-                {
-                    return RC_PAGES_IN_BUFFER;
-                }
-                i++;
-            }
-            break;
+        RC_message = "ERROR: Buffer pool pointer is NULL!";
+        printError(*RC_message);
+        return RC_BUFFER_NOT_INIT;
     }
-    free(pageFrame);
-    bm->mgmtData = NULL;/*t sets the mgmtData field of the buffer pool structure pointed to by bm to NULL.
-                        This indicates that the buffer pool is now empty.*/
-    return RC_OK;
-}
 
+    // Retrieve buffer pointer
+    Buffer *bufferPtr = bm->mgmtData;
 
-
-/*Function flushframe is use  to flush a single frame. and it will Within the framework of a buffer pool
- *  management system, the flushFrame function is intended to write the contents of a single 
- * frame to disk. Using openPageFile, it first opens the page file linked to the buffer pool. 
- * The data from the given frame (pageFrame) is then written to the matching page number (pageNum)
- *  in the file using writeBlock. It designates the frame as clean by changing its dirtyCount field to 0,
- *  indicating that the data has been successfully written to disk. It probably also modifies a counter 
- * (numberOfPagesWritten) to keep track of how many pages have been written to disk. This feature makes
- *  sure that changes made to buffer pool pages are saved to disk, preserving consistency between
- *  in-memory data and persistant memory*/
-
-void flushFrame(BM_BufferPool *const bm, Frame *pageFrame, int pageNum) {
-    SM_FileHandle fh;
-    openPageFile(bm->pageFile, &fh);
-    writeBlock(pageNum, &fh, pageFrame->bm_PageHandle.data);
-    pageFrame->dirtyCount = 0;
-    numberOfPagesWritten++;
-}
-
-/*Revised forceFlushPool function using flushFrame and it is use for 
-The forceFlushPool function iterates over each frame in the buffer pool. 
-For each frame, if it's not currently in use and has been modified, 
-it calls flushFrame to write its data to disk. Finally, the function returns RC_OK,
-ensuring all dirty pages are successfully flushed to maintain data consistency.*/
-
-extern RC forceFlushPool(BM_BufferPool *const bm) {
-    Frame *pageFrame = (Frame *)bm->mgmtData;
-    int i = 0;
-    switch (i) {
-        case 0:
-            while (i < maxBufferSize) {
-                if (pageFrame[i].fixCount == 0 && pageFrame[i].dirtyCount == 1) {
-                    flushFrame(bm, &pageFrame[i], pageFrame[i].bm_PageHandle.pageNum);
-                }
-                i++;
-            }
-            break;
+    // Check if buffer pointer is not NULL
+    if (bufferPtr == NULL)
+    {
+        RC_message = "ERROR: MANAGEMENT DATA IS NULL!";
+        printError(*RC_message);
+        return RC_MGMT_POINTER_NULL;
     }
-    return RC_OK;
-}
 
+    // Retrieve frame pointer
+    Frame *framePtr = bufferPtr->head;
 
-// Buffer Manager Interface Access Pages
-RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
-  // Checking if buffer manager, page file, or page handle pointers are NULL.
-    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
-        return RC_ERROR;
-    
-    buffer *b = (buffer*)bm->mgmtData;
-    if (b->head == NULL)
-        return RC_READ_NON_EXISTING_PAGE; // page not found
+    // Check if frame pointer is not NULL
+    if (framePtr == NULL)
+    {
+        RC_message = "ERROR: Frame pointer is NULL!";
+        printError(*RC_message);
+        return RC_FRAME_POINTER_FAILURE;
+    }
 
-    Frame *f = b->head;
-    do {
-        if (f->currentPage == page->pageNum) {
-            f->isDirty = true; // Mark the frame as dirty since the page has been modified
-            return RC_OK; 
-        }
-        f = f->nextFrame;
-    } while (f != b->head);
-
-    return RC_READ_NON_EXISTING_PAGE; // specified page was not found
-}
-
-
-RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
-    RC returnCode=RC_OK;
-    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
-    return RC_ERROR;
-    buffer *b = (buffer*)bm->mgmtData;
-    Frame *f = b->head;
-    while (f->currentPage!=page->pageNum){
-        f=f->nextFrame;
-        if (f==b->head)
+    do
+    {
+        framePtr = framePtr->next;
+        if (framePtr == bufferPtr->head)
+        {
+            RC_message = "ERR:TRYING TO READ NON_EXISTENT PAGE!!!";
+            printError(*RC_message);
             return RC_READ_NON_EXISTING_PAGE;
+        }
+
+    } while (framePtr->currpage != page->pageNum);
+
+    framePtr->dirtyFlag = !false;
+    return RC_OK;
+}
+
+RC unpinPage(BM_BufferPool *const bm, BM_PageHandle *const page)
+{
+    // Retrieve buffer and frame pointers
+    Buffer *bufferPtr = bm->mgmtData;
+    Frame *framePtr = bufferPtr->head;
+
+    // Search for the page in the buffer pool
+    for (int i = 0; i <= 1000; i++)
+    {
+        if (framePtr->currpage == page->pageNum)
+        {
+            break;
+        }
+        framePtr = framePtr->next;
+        // If we've traversed the entire buffer without finding the page, return error
+        if (framePtr == bufferPtr->head)
+        {
+            RC_message = "ERR: READING NOT EXISTENT PAGE!!";
+            printError(*RC_message);
+        }
     }
-    if (f->fixCount > 0){
-        f->fixCount--;
-        if (f->fixCount == 0)
-            f->referenceBit = false;
+
+    // If the page is found, decrement its fix count
+    if (framePtr->fixCount > 0)
+    {
+        framePtr->fixCount = framePtr->fixCount - 1;
+        // If fix count reaches 0, mark the page as unpinned
+        if (framePtr->fixCount == 0)
+            framePtr->refbit = false;
     }
     else
+    {
+        // Handle the case where the page is not found (should not happen)
+        RC_message = "ERROR: ATTEMPTING TO UNPIN NON-EXISTENT PAGE!";
+        printError(*RC_message);
         return RC_READ_NON_EXISTING_PAGE;
-
-    return returnCode;
-}
-
-RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page){
-    if (bm == NULL || bm->pageFile == NULL || page == NULL) 
-    return RC_ERROR;
-    buffer *b = (buffer*)bm->mgmtData;
-    SM_FileHandle fHandle;
-    RC stat;
-    // Attempt to open the page file
-    stat = openPageFile(bm->pageFile, &fHandle);
-    if (stat!=RC_OK) return RC_FILE_NOT_FOUND;
-    // Write the page data to disk
-    stat = writeBlock(page->pageNum, &fHandle, page->data);
-    if (stat!=RC_OK){
-        closePageFile(&fHandle);
-        return RC_FILE_NOT_FOUND;
     }
-    
-    b->writeCount++;
-    closePageFile(&fHandle); // Close the file handle after successful write
+
     return RC_OK;
 }
 
+RC forcePage(BM_BufferPool *const bm, BM_PageHandle *const page)
+{
+    // Open the page file
+    SM_FileHandle fileHandler;
+    RC rcCode = openPageFile(bm->pageFile, &fileHandler);
+    if (rcCode != RC_OK)
+    {
+        RC_message = "ERR: FILE NOT FOUND";
+        printError(*RC_message);
+        return RC_FILE_NOT_FOUND; // Return error if file not found
+    }
+
+    // Write the page to disk
+    rcCode = writeBlock(page->pageNum, &fileHandler, page->data);
+    if (rcCode != RC_OK)
+    {
+        // Print error message and close the file if write fails
+        RC_message = "ERR:ERROR WRITING PAGE TO FILE";
+        printError(*RC_message);
+        closePageFile(&fileHandler);
+        return RC_WRITE_FAILED;
+    }
+
+    // Increment write count and close the page file
+    ((Buffer *)bm->mgmtData)->writeCount = ((Buffer *)bm->mgmtData)->writeCount + 1;
+    closePageFile(&fileHandler);
+
+    return RC_OK; // Return success
+}
+RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page,
+           const PageNumber pageNum)
+{
+    if (pageNum < 0)
+    {
+        RC_message = "ERR: INVALID PAGE NUMBER";
+        printError(*RC_message);
+        return RC_INVALID_PAGE_VALUE;
+    }
+
+    int strategy = bm->strategy;
+    if (strategy == RS_FIFO)
+        return FIFO(bm, page, pageNum, false);
+    else if (strategy == RS_LRU)
+        return LRU(bm, page, pageNum);
+    else if (strategy == RS_CLOCK)
+        return CLOCK(bm, page, pageNum);
+    else if (strategy == LRUK)
+        return LRUK(bm, page, pageNum);
+    else
+    {
+        RC_message = "ERR:UNKNOWN STRATEGY!!";
+        printError(*RC_message);
+        return RC_IM_KEY_NOT_FOUND;
+    }
+}
+
+PageNumber *getFrameContents(BM_BufferPool *const bm)
+{
+    int pageCount = bm->numPages;
+    // PageNumber *pgPtr = calloc(bm->numPages, sizeof(int));
+    PageNumber *pgPtr = (PageNumber *)malloc(bm->numPages * sizeof(int));
+    if (pgPtr != NULL)
+    {
+        memset(pgPtr, 0, bm->numPages * sizeof(int));
+    }
+    else
+    {
+        RC_message = "ERR: PAGE POINTER MEM ALLOC FAILURE";
+        printError(*RC_message);
+        return RC_MEM_ALLOC_FAILED;
+    }
+    Buffer *bufferPtr = bm->mgmtData;
+    Statlist *statListPtr = bufferPtr->statListHead;
+    int idx = 0;
+    while (idx < pageCount)
+    {
+        pgPtr[idx] = statListPtr->fpt->currpage;
+        statListPtr = statListPtr->next;
+        idx++;
+    }
+    return pgPtr;
+}
+
+bool *getDirtyFlags(BM_BufferPool *const bm)
+{
+    bool *pgPtr = calloc(bm->numPages, sizeof(bool));
+    int pageC = (bm->numPages); // Set page count
+    Buffer *bufferPtr = bm->mgmtData;
+    Statlist *spt = bufferPtr->statListHead;
+    int idx = 0;
+    while (idx < pageC)
+    {
+        if (spt->fpt->dirtyFlag)
+            pgPtr[idx] = true;
+        spt = spt->next;
+        idx++;
+    }
+    return pgPtr;
+}
+
+int *getFixCounts(BM_BufferPool *const bm)
+{
+    PageNumber *pgNoPtr = calloc(bm->numPages, sizeof(int));
+
+    // Check if memory allocation was successful
+    if (pgNoPtr == NULL)
+    {
+        RC_message = "ERROR: MEM ALLOC FAILED!";
+        printError(*RC_message);
+        return RC_MEM_ALLOC_FAILED;
+    }
+    Buffer *bufferPtr = bm->mgmtData;
+    int pageC = (bm->numPages); // Set page count
+    Statlist *statPtr = bufferPtr->statListHead;
+    int i = 0;
+    while (i < pageC)
+    {
+        pgNoPtr[i] = statPtr->fpt->fixCount;
+        statPtr = statPtr->next;
+        i++;
+    }
+    return pgNoPtr;
+}
+int getNumReadIO(BM_BufferPool *const bm)
+{
+    return ((Buffer *)bm->mgmtData)->readCount;
+}
+
+int getNumWriteIO(BM_BufferPool *const bm)
+{
+    return ((Buffer *)bm->mgmtData)->writeCount;
+}

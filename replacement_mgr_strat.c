@@ -1,127 +1,246 @@
+#include "buffer_mgr_stat.h"
+#include "buffer_mgr.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 
-#include "buffer_mgr.h"
-#include "replacement_mgr_strat.h"
-#include "storage_mgr.h"
-
-
-extern void initializeVariables(Frame *newFrame, Frame *frame, int index){
-	newFrame[index].bm_PageHandle.data = frame->bm_PageHandle.data;
-	newFrame[index].bm_PageHandle.pageNum = frame->bm_PageHandle.pageNum;
-	newFrame[index].dirtyCount = frame->dirtyCount;
-	newFrame[index].fixCount = frame->fixCount;
-}
-
-extern void FIFO(BM_BufferPool *const bm, Frame *frame, int noOfPagesRead, int noOfPagesWrite, int maxBufferSize)
+Frame *checkIfPinned(BM_BufferPool *const bm, const PageNumber pageNum)
 {
-	Frame *pageFrame = (Frame *) bm->mgmtData;
-	
-	int frontIndex = noOfPagesRead % maxBufferSize;
+    // Retrieve the buffer pool's management data
+    Buffer *bf = (Buffer *)bm->mgmtData;
 
-	int i = 0;
-	while(i < maxBufferSize)
-	{
-		if(pageFrame[frontIndex].fixCount == 0)
-		{
-			if(pageFrame[frontIndex].dirtyCount == 1)
-			{
-				SM_FileHandle fh;
-				openPageFile(bm->pageFile, &fh);
-				writeBlock(pageFrame[frontIndex].bm_PageHandle.pageNum, &fh, pageFrame[frontIndex].bm_PageHandle.data);
-				
-				noOfPagesWrite += 1;
-			}
-			
-			initializeVariables(pageFrame, frame, frontIndex);
-			break;
-		}
-		else
-		{
-			if (frontIndex % maxBufferSize == 0){
-				frontIndex = 0;
-			} else {
-				frontIndex++;
-			}
-		}
+    // Start from the head of the buffer pool
+    Frame *currentFrame = bf->head;
 
-		i++;
-	}
+    // Traverse through the buffer pool circularly
+    while (currentFrame != NULL)
+    {
+        // Check if the current frame matches the requested page number
+        if (currentFrame->currpage == pageNum)
+        {
+            // If so, increment the fix count and return the frame
+            currentFrame->fixCount++;
+            return currentFrame;
+        }
+
+        // Move to the next frame in the buffer pool
+        currentFrame = currentFrame->next;
+
+        // If we have reached back to the head of the buffer pool, stop
+        if (currentFrame == bf->head)
+            break;
+    }
+
+    // If the requested page number is not found in any frame, return NULL
+    return NULL;
 }
 
-extern void LRU(BM_BufferPool *const bm, Frame *frame, int maxBufferSize, int noOfPagesWrite)
-{	
-	Frame *pageFrame = (Frame *) bm->mgmtData;
-	int leastHitIdx = 0;
-	int leastHitRef = 0;
+int pinThispage(BM_BufferPool *const bm, Frame *pt, PageNumber pageNum)
+{
+    // Retrieve the buffer pool's management data
+    Buffer *bf = (Buffer *)bm->mgmtData;
+    SM_FileHandle fHandle;
 
-	int i = 0;
+    // Open the page file
+    RC rt_value = openPageFile(bm->pageFile, &fHandle);
+    if (rt_value != RC_OK)
+        return rt_value;
 
-	while(i < maxBufferSize)
-	{
-		if(pageFrame[i].fixCount == 0)
-		{
-			leastHitIdx = i;
-			leastHitRef = pageFrame[i].hit;
-			break;
-		}
+    // Ensure capacity for the page
+    rt_value = ensureCapacity(pageNum, &fHandle);
+    if (rt_value != RC_OK)
+    {
+        closePageFile(&fHandle);
+        return rt_value;
+    }
 
-		i++;
-	}	
+    // If the frame is dirty, write its contents back to disk
+    if (pt->dirtyFlag)
+    {
+        rt_value = writeBlock(pt->currpage, &fHandle, pt->data);
+        if (rt_value != RC_OK)
+        {
+            closePageFile(&fHandle);
+            return rt_value;
+        }
+        pt->dirtyFlag = false;
+        bf->writeCount++;
+    }
 
-	for(int i = leastHitIdx + 1; i < maxBufferSize; i++)
-	{
-		if(pageFrame[i].hit < leastHitRef)
-		{
-			leastHitIdx = i;
-			leastHitRef = pageFrame[i].hit;
-		}
-	}
+    // Read the requested page into the frame's data
+    rt_value = readBlock(pageNum, &fHandle, pt->data);
+    if (rt_value != RC_OK)
+    {
+        closePageFile(&fHandle);
+        return rt_value;
+    }
 
-	if(pageFrame[leastHitIdx].dirtyCount == 1)
-	{
-		SM_FileHandle fh;
-		openPageFile(bm->pageFile, &fh);
-		writeBlock(pageFrame[leastHitIdx].bm_PageHandle.pageNum, &fh, pageFrame[leastHitIdx].bm_PageHandle.data);
-		
-		noOfPagesWrite++;
-	}
-	
-	initializeVariables(pageFrame, frame, leastHitIdx);
+    // Increment read count, set current page, and increment fix count
+    bf->readCount++;
+    pt->currpage = pageNum;
+    pt->fixCount++;
+
+    // Close the page file
+    closePageFile(&fHandle);
+
+    return RC_OK;
+}
+
+/* Replacement Functions*/
+
+RC FIFO(BM_BufferPool *const bm, BM_PageHandle *const page,
+           const PageNumber pageNum, bool fromLRU)
+{
+    // If called from LRU and not from LRU mode, check if page is already pinned
+    if (!fromLRU && checkIfPinned(bm, pageNum))
+        return RC_OK;
+
+    // Load buffer pool management data
+    Buffer *bf = bm->mgmtData;
+    Frame *pt = bf->head;
+
+    // Find the first available frame in FIFO manner
+    bool notFound = true;
+    do
+    {
+        if (pt->fixCount == 0)
+        {
+            notFound = false;
+            break;
+        }
+        pt = pt->next;
+    } while (pt != bf->head);
+
+    // If no available frame found, return error
+    if (notFound)
+        return RC_IM_NO_MORE_ENTRIES;
+
+    // Pin the page using FIFO strategy
+    RC rt_value = pinThispage(bm, pt, pageNum);
+    if (rt_value != RC_OK)
+        return rt_value;
+
+    // Assign page number and data
+    page->pageNum = pageNum;
+    page->data = pt->data;
+
+    // Update circular queue pointers
+    if (pt == bf->head)
+        bf->head = pt->next;
+    pt->prev->next = pt->next;
+    pt->next->prev = pt->prev;
+    pt->prev = bf->tail;
+    bf->tail->next = pt;
+    bf->tail = pt;
+    pt->next = bf->head;
+    bf->head->prev = pt;
+
+    return RC_OK;
+}
+
+RC LRU(BM_BufferPool *const bm, BM_PageHandle *const page,
+          const PageNumber pageNum)
+{
+    // Check if the page is already pinned
+    Frame *ptr = checkIfPinned(bm, pageNum);
+
+    if (ptr)
+    { // If already pinned, change its priority in LRU
+        Buffer *bf = bm->mgmtData;
+
+        // Move the pinned page to the tail of the list
+        if (ptr == bf->head)
+        {
+            // Adjust pointers to detach the page from its current position
+            bf->head = ptr->next;
+        }
+        // Update pointers to add the page to the tail
+        ptr->prev->next = ptr->next;
+        ptr->next->prev = ptr->prev;
+        ptr->prev = bf->tail;
+        bf->tail->next = ptr;
+        bf->tail = ptr;
+        ptr->next = bf->head;
+        bf->head->prev = ptr;
+
+        // Assign page number and data
+        page->pageNum = pageNum;
+        page->data = ptr->data;
+    }
+    else
+    { // If not pinned, use FIFO pinning
+        return FIFO(bm, page, pageNum, true);
+    }
+
+    return RC_OK;
+}
+
+RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
+            const PageNumber pageNum)
+/*use pointer to scan. No need to reorder queue*/
+{
+    if (checkIfPinned(bm, pageNum))
+        return RC_OK;
+    Buffer *bf = bm->mgmtData;
+    Frame *pt = bf->pointer->next;
+    bool notfind = true;
+
+    while (pt != bf->pointer)
+    {
+        if (pt->fixCount == 0)
+        {
+            if (!pt->refbit) // refbit = 0
+            {
+                notfind = false;
+                break;
+            }
+            pt->refbit = false; // on the way set all bits to 0
+        }
+        pt = pt->next;
+    };
+
+    if (notfind)
+        return RC_IM_NO_MORE_ENTRIES; // no avaliable Frame
+
+    RC rt_value = pinThispage(bm, pt, pageNum);
+    if (rt_value != RC_OK)
+        return rt_value;
+
+    bf->pointer = pt;
+    page->pageNum = pageNum;
+    page->data = pt->data;
+
+    return RC_OK;
 }
 
 
-extern void CLOCK(BM_BufferPool *const bm, Frame *page, int clockPointer, int maxBufferSize, int noOfPagesWrite)
-{	
-	Frame *pageFrame = (Frame *) bm->mgmtData;
-	while(true)
-	{
-		if (clockPointer % maxBufferSize == 0){
-			clockPointer = 0;
-		}
 
-		if(pageFrame[clockPointer].hit == 0)
-		{
-			if(pageFrame[clockPointer].dirtyCount == 1)
-			{
-				SM_FileHandle fh;
-				openPageFile(bm->pageFile, &fh);
-				writeBlock(pageFrame[clockPointer].bm_PageHandle.pageNum, &fh, pageFrame[clockPointer].bm_PageHandle.data);
-				
-				noOfPagesWrite += 1;
-			}
-			
-			initializeVariables(pageFrame, page, clockPointer);
+   extern RC LRUK(BM_BufferPool *const bm, BM_PageHandle *const page,
+               const PageNumber pageNum) {
+    Frame *ptr = checkIfPinned(bm, pageNum);
 
-			clockPointer += 1;
-			break;	
-		}
-		else
-		{
-			clockPointer += 1;
-			pageFrame[clockPointer].hit = 0;		
-		}
-	}
+    if (ptr) { // Page is already pinned, update its position in LRU-K
+        Buffer *bf = bm->mgmtData;
+
+        // Move the accessed page to the top of the LRU-K stack
+        if (ptr != bf->head) {
+            // Adjust pointers to detach the page from its current position
+            ptr->prev->next = ptr->next;
+            ptr->next->prev = ptr->prev;
+
+            // Update pointers to add the page to the top
+            ptr->next = bf->head;
+            bf->head->prev = ptr;
+            ptr->prev = NULL;
+            bf->head = ptr;
+        }
+
+        // Assign page number and data
+        page->pageNum = pageNum;
+        page->data = ptr->data;
+    } else { // Page not pinned, use FIFO pinning
+        return FIFO(bm, page, pageNum, true);
+    }
+
+    return RC_OK;
 }

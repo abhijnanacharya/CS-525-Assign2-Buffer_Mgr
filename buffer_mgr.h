@@ -34,23 +34,32 @@ typedef struct BM_PageHandle {
 } BM_PageHandle;
 
 //Page Frame Reference to store value
-typedef struct Frame{
-	int dirtyCount;
-	int fixCount;
-	int hit;
-	BM_PageHandle bm_PageHandle;
-	SM_PageHandle smp;
-	int currentPage;
-	bool isDirty;
-	bool referenceBit;
-	char *data;
-	struct Frame *nextFrame;
-} Frame;
+typedef struct Frame {
+    int currpage;       // the corresponding page in the file
+    bool dirtyFlag;    // flag indicating whether the page is dirty
+    int fixCount;       // number of clients currently using this frame
+    char data[PAGE_SIZE];   // data stored in the page
+    bool refbit;        // true=1 false=0 for clock
+    struct Frame *next; // pointer to the next frame in the list
+    struct Frame *prev; // pointer to the previous frame in the list
+}Frame;
 
-typedef struct buffer{
-    int writeCount;
-    Frame *head;
-}buffer;
+typedef struct Statlist {
+    Frame *fpt;             // frame pointer
+    struct Statlist *next;  // pointer to the next node in the status list
+}Statlist;
+
+typedef struct Buffer {    // buffer pool structure
+    int numFrames;         // number of frames in the frame list
+    int readCount;         // count of read operations
+    int writeCount;        // count of write operations
+    void *stratData;       // strategy-specific data
+    Frame *head;           // pointer to the first frame in the frame list
+    Frame *tail;           // pointer to the last frame in the frame list
+    Frame *pointer;        // pointer for special purposes; initialized as the head
+    Statlist *statListHead;    // pointer to the head of the status list
+} Buffer;
+
 
 
 // convenience macros
