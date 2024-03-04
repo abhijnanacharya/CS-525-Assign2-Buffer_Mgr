@@ -9,6 +9,7 @@
 ---
 
 ---
+# Buffer_Mgr.c
 
 **function BM initBufferPool**
 
@@ -381,6 +382,236 @@ int getNumWriteIO (BM_BufferPool *const bm);
 
 **Details:**
 1. 
+
+
+---
+
+---
+#replacement_mgr_strat.c
+**Replacement Functions**
+
+**function FIFO**
+
+This file describes the 'FIFO' function implements the First-In-First-Out (FIFO) page replacement strategy for a buffer pool.
+**Function Signature:**
+
+```c
+RC FIFO(BM_BufferPool *const bm, BM_PageHandle *const page,
+           const PageNumber pageNum, bool fromLRU)
+```
+
+**Purpose:** This function implements the First-In-First-Out (FIFO) page replacement strategy in the context of a buffer pool.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Page that is given
+- `pageNum`: Current page number we are working on.
+- `fromLRU`: bool value
+
+**Return:**
+
+- `RC_OK`: Returns with successful operation of code
+
+**Details:**
+1. If called from LRU and not from LRU mode, check if page is already pinned
+2. Load buffer pool management data
+3. Find the first available frame in FIFO manner
+4. If no available frame found, return error
+5. Pin the page using FIFO strategy
+6. Assign page number and data
+7. Update circular queue pointers
+8. Return succesful return code
+
+   
+---
+
+**function LRU**
+
+This file describes the 'FIFO' function implements the Least Recently Used (LRU) page replacement strategy within a buffer pool.
+**Function Signature:**
+
+```c
+RC LRU(BM_BufferPool *const bm, BM_PageHandle *const page,
+          const PageNumber pageNum)
+```
+
+**Purpose:** The purpose of this code is to implement the Least Recently Used (LRU) page replacement strategy in the context of a buffer pool. It prioritizes the pinning of a specified page by updating its position in the LRU order if it is already pinned. If the page is not currently in the buffer pool, it falls back to using the First-In-First-Out (FIFO) strategy for pinning the page.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Page that is given
+- `pageNum`: Current page number we are working on.
+
+**Return:**
+
+- `RC_OK`: Returns with successful operation of code
+
+**Details:**
+1. Check if the page is already pinned
+2. If already pinned, change its priority in LRU
+3. Move the pinned page to the tail of the list
+4. Adjust pointers to detach the page from its current position
+5. Update pointers to add the page to the tail
+6. Assign page number and data
+7. If not pinned, use FIFO pinning
+8. Return succesful return code
+
+
+---
+
+**function CLOCK**
+
+This file describes the 'FIFO' function implements the CLOCK page replacement strategy within a buffer pool.
+**Function Signature:**
+
+```c
+RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
+            const PageNumber pageNum)
+```
+
+**Purpose:** The purpose of this code is to implement the CLOCK page replacement strategy in the context of a buffer pool. The CLOCK algorithm scans frames in a circular manner, resetting reference bits and selecting the first unpinned frame with a reference bit of 0 to pin a specified page.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Page that is given
+- `pageNum`: Current page number we are working on.
+
+**Return:**
+
+- `RC_OK`: Returns with successful operation of code
+
+**Details:**
+1. Check if the specified page is already pinned in the buffer pool.
+2. If the page is already pinned, return RC_OK.
+3. Retrieve the buffer pool's management data and initialize a pointer (pt) to the frame next to the current clock hand position.
+4. Initialize a boolean variable notfind to true, indicating that an available frame has not been found yet.
+5. Iterate through the frames in a circular manner until the clock hand completes one full rotation (reaches the initial position).
+6. For each frame, check if it is unpinned (fixCount == 0).
+7. If the frame is unpinned, check its reference bit (refbit):
+8. If the reference bit is 0, set notfind to false and break out of the loop.
+9. If the reference bit is 1, set the reference bit to 0 (simulating a clock hand reset).
+10. If no available frame is found after the scan, return RC_IM_NO_MORE_ENTRIES, indicating that there are no unpinned frames.
+11. If an available frame is found, pin the specified page using the pinThispage function.
+12. Update the clock hand position to the frame where the unpinned page was found.
+13. Assign the page number and data to the BM_PageHandle structure.
+14. Return RC_OK to indicate a successful page pinning operation.
+
+---
+
+**function LRUK**
+
+This file describes the 'LRUK' function implements the LRU-K page replacement strategy within a buffer pool.
+**Function Signature:**
+
+```c
+RC CLOCK(BM_BufferPool *const bm, BM_PageHandle *const page,
+               const PageNumber pageNum)
+```
+
+**Purpose:** The purpose of this code is to implement the LRU-K page replacement strategy in the context of a buffer pool. It prioritizes the pinning of a specified page by updating its position in the LRU-K order if it is already pinned. If the page is not currently in the buffer pool, it falls back to using the First-In-First-Out (FIFO) strategy for pinning the page. 
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `page`: Page that is given
+- `pageNum`: Current page number we are working on.
+
+**Return:**
+
+- `RC_OK`: Returns with successful operation of code
+
+**Details:**
+1. Page is already pinned, update its position in LRU-K
+2. Move the accessed page to the top of the LRU-K stack
+3. Adjust pointers to detach the page from its current position
+4. Update pointers to add the page to the top
+5. Assign page number and data
+6. Page not pinned, use FIFO pinning
+7. Return successful return code
+
+---
+
+---
+
+**Additional Functions**
+**function checkIfPinned**
+
+This file describes the 'checkIfPinned' function which defines a function checkIfPinned that searches for a frame in a circular buffer pool (BM_BufferPool) with a given page number (pageNum). If the frame with the specified page number is found, its fix count is incremented, and the frame is returned; otherwise, it returns NULL indicating that the requested page number is not present in any frame.
+
+**Function Signature:**
+
+```c
+Frame *checkIfPinned(BM_BufferPool *const bm, const PageNumber pageNum)
+```
+
+**Purpose:** This function checks if a particular page with a given page number is already present in the buffer pool.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `pageNum`: Current page number we are working on.
+
+**Return:**
+
+- `currentFrame`: Returns current frame
+- `NULL`: If the requested page number is not found in any frame, return NULL
+
+**Details:**
+1. Retrieve the buffer pool's management data
+2. Start from the head of the buffer pool
+3. Traverse through the buffer pool circularly
+4. Check if the current frame matches the requested page number
+5. If so, increment the fix count and return the frame
+6. Move to the next frame in the buffer pool
+7. If we have reached back to the head of the buffer pool, stop
+8. If the requested page number is not found in any frame, return NULL
+
+   
+---
+
+**function pinThispage**
+
+This file describes the 'pinThispage' function pins a specified page in a buffer pool by ensuring its presence, writing back the contents of the current frame if it's dirty, and then reading the requested page into the frame while updating relevant metadata such as fix count and read count.
+
+**Function Signature:**
+
+```c
+int pinThispage(BM_BufferPool *const bm, Frame *pt, PageNumber pageNum);
+```
+
+**Purpose:** The purpose of this code is to pin a specified page in a buffer pool, ensuring that the page is in the buffer pool's memory. The function handles operations such as opening the page file, ensuring capacity, writing back data if the current frame is dirty, reading the requested page into the frame, and updating metadata like fix count and read count.
+
+
+**Parameters:**
+
+- `bm`: Pointer to the `BM_BufferPool` struct to be initialized.
+- `pageNum`: Current page number we are working on.
+- `pt`: A page frame
+
+**Return:**
+
+- `RC_OK`: Returns with successful operation of code
+
+**Details:**
+1. Retrieve the buffer pool's management data
+2. Open the page file
+3. Ensure capacity for the page
+4. If the frame is dirty, write its contents back to disk
+5. Read the requested page into the frame's data
+6. Increment read count, set current page, and increment fix count
+7. Close the page file
+8. Return return code if successful completion
+
+
+
 
 
 
